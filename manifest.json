@@ -1,0 +1,17 @@
+{
+  "name": "東美レジ",
+  "short_name": "東美レジ",
+  "description": "東美 店舗向けオフラインPOSレジアプリ（割引・AI価格読み取り対応）",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#f5f3ee",
+  "theme_color": "#2c2c2a",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2c2c2a">
+<title>東美レジ</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --paper:#f5f3ee;
+  --card:#fffdf8;
+  --ink:#2c2c2a;
+  --sub:#6f6a60;
+  --line:#ddd8cc;
+  --accent:#185fa5;
+  --accent-soft:#e7eef7;
+  --danger:#b3422e;
+  --danger-soft:#f7e9e6;
+  --ok:#3a7d44;
+  --ok-soft:#e8f2ea;
+  --disc:#9a6a12;
+  --disc-soft:#f6eedd;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:-apple-system,"Hiragino Kaku Gothic ProN","Hiragino Sans",Meiryo,sans-serif;
+  background:var(--paper);color:var(--ink);
+  display:flex;flex-direction:column;overflow:hidden;
+  -webkit-user-select:none;user-select:none;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;font-size:16px}
+
+/* ===== header ===== */
+header{
+  display:flex;align-items:center;gap:14px;
+  padding:max(8px,env(safe-area-inset-top)) 16px 8px;
+  background:var(--ink);color:var(--paper);flex-shrink:0;
+}
+.brand{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:21px;letter-spacing:.18em}
+.brand small{font-size:12px;letter-spacing:.1em;color:#bdb8ab;margin-left:6px;font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif}
+.brand-rule{flex:0 0 28px;height:2px;background:var(--accent)}
+.hd-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:13px}
+.hd-staff{background:#3d3d3a;border-radius:20px;padding:6px 14px;display:flex;gap:6px;align-items:center}
+.hd-staff b{font-weight:600}
+.hd-clock{color:#bdb8ab;font-variant-numeric:tabular-nums}
+.net-dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.net-dot.off{background:#8a857a}
+
+/* ===== tabs ===== */
+nav{display:flex;background:var(--card);border-bottom:1px solid var(--line);flex-shrink:0}
+nav button{
+  flex:1;padding:11px 4px;font-size:14px;color:var(--sub);
+  border-bottom:3px solid transparent;font-weight:500;
+}
+nav button.act{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+
+main{flex:1;overflow:hidden;position:relative}
+.page{display:none;height:100%;overflow:auto;-webkit-overflow-scrolling:touch}
+.page.act{display:block}
+.pad{padding:14px 16px 80px}
+
+/* ===== register ===== */
+#page-reg.act{display:flex}
+.reg-left{flex:1.4;display:flex;flex-direction:column;border-right:1px solid var(--line);min-width:0}
+.cat-bar{display:flex;gap:8px;padding:10px 12px;overflow-x:auto;flex-shrink:0;background:var(--card);border-bottom:1px solid var(--line)}
+.cat-bar button{
+  white-space:nowrap;padding:7px 16px;border-radius:18px;font-size:14px;
+  background:var(--paper);border:1px solid var(--line);color:var(--sub)
+}
+.cat-bar button.act{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:600}
+.prod-grid{
+  flex:1;overflow-y:auto;display:grid;gap:10px;padding:12px;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));align-content:start;
+}
+.prod-card{
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  padding:12px 10px;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:84px;
+  box-shadow:0 1px 2px rgba(44,44,42,.05);
+}
+.prod-card:active{background:var(--accent-soft);border-color:var(--accent)}
+.prod-card .nm{font-size:14px;font-weight:600;line-height:1.35}
+.prod-card .pr{margin-top:auto;font-size:15px;color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+.prod-card .ct{font-size:11px;color:var(--sub)}
+.grid-empty{grid-column:1/-1;color:var(--sub);text-align:center;padding:40px 10px;font-size:14px;line-height:1.8}
+
+.reg-right{flex:1;display:flex;flex-direction:column;background:var(--card);min-width:300px;max-width:430px}
+.cart-head{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);flex-shrink:0}
+.cart-head h2{font-size:15px;font-weight:700}
+.cart-head .cnt{margin-left:8px;font-size:12px;color:var(--sub)}
+.cart-clear{margin-left:auto;font-size:13px;color:var(--danger);padding:6px 10px}
+.cart-list{flex:1;overflow-y:auto}
+.cart-line{padding:10px 14px;border-bottom:1px solid #ece8dd}
+.cl-top{display:flex;align-items:baseline;gap:8px}
+.cl-top .nm{font-size:14px;font-weight:600;flex:1;line-height:1.3}
+.cl-top .amt{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.cl-bottom{display:flex;align-items:center;gap:8px;margin-top:7px}
+.qty-btn{
+  width:34px;height:34px;border-radius:8px;border:1px solid var(--line);
+  background:var(--paper);font-size:18px;font-weight:600;color:var(--ink)
+}
+.cl-qty{min-width:30px;text-align:center;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.disc-btn{
+  margin-left:auto;font-size:12px;padding:6px 12px;border-radius:14px;
+  border:1px dashed var(--disc);color:var(--disc);background:var(--disc-soft)
+}
+.disc-tag{
+  display:inline-block;font-size:11px;color:var(--disc);background:var(--disc-soft);
+  border-radius:4px;padding:1px 6px;margin-top:4px;font-weight:600
+}
+.cl-del{font-size:12px;color:var(--sub);padding:6px 8px}
+.cart-empty{color:var(--sub);text-align:center;padding:50px 10px;font-size:14px}
+.cart-foot{border-top:2px solid var(--ink);padding:12px 14px;flex-shrink:0;background:var(--card)}
+.tot-row{display:flex;justify-content:space-between;font-size:13px;color:var(--sub);padding:2px 0;font-variant-numeric:tabular-nums}
+.tot-row.main{font-size:21px;color:var(--ink);font-weight:800;padding:6px 0 2px}
+.pay-btn{
+  width:100%;margin-top:10px;padding:15px;border-radius:10px;background:var(--accent);
+  color:#fff;font-size:17px;font-weight:700;letter-spacing:.1em;
+}
+.pay-btn:disabled{background:#b9b4a8}
+
+/* ===== generic card/list ===== */
+.sec{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
+.sec-h{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);gap:10px}
+.sec-h h3{font-size:15px;font-weight:700}
+.sec-h .sp{margin-left:auto}
+.row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #ece8dd;font-size:14px}
+.row:last-child{border-bottom:none}
+.row .grow{flex:1;min-width:0}
+.row .sub{font-size:12px;color:var(--sub);margin-top:2px}
+.num{font-variant-numeric:tabular-nums}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 18px;border-radius:9px;font-size:14px;font-weight:600;
+  background:var(--ink);color:var(--paper)
+}
+.btn.blue{background:var(--accent)}
+.btn.ghost{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.btn.red{background:var(--danger)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:7px}
+.btn:disabled{opacity:.45}
+
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:600}
+.field input,.field select{
+  width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;
+  background:var(--card);color:var(--ink)
+}
+.badge{font-size:11px;border-radius:4px;padding:2px 7px;font-weight:700}
+.badge.ref{background:var(--danger-soft);color:var(--danger)}
+.badge.cat{background:var(--accent-soft);color:var(--accent)}
+
+/* ===== modal ===== */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(44,44,42,.45);display:none;
+  align-items:center;justify-content:center;z-index:50;padding:18px;
+}
+.modal-bg.act{display:flex}
+.modal{
+  background:var(--card);border-radius:14px;width:100%;max-width:480px;
+  max-height:86vh;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 12px 40px rgba(44,44,42,.3)
+}
+.modal.wide{max-width:680px}
+.mo-h{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);flex-shrink:0}
+.mo-h h3{font-size:16px;font-weight:700}
+.mo-close{margin-left:auto;font-size:22px;color:var(--sub);padding:2px 8px;line-height:1}
+.mo-b{padding:16px;overflow-y:auto}
+.mo-f{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
+
+/* discount modal */
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:14px}
+.seg button{flex:1;padding:11px;font-size:14px;background:var(--paper);color:var(--sub);font-weight:600}
+.seg button.act{background:var(--ink);color:var(--paper)}
+.disc-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.disc-quick button{padding:11px 4px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-size:14px;font-weight:600}
+.disc-preview{margin-top:14px;background:var(--paper);border-radius:8px;padding:10px 12px;font-size:14px;display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+
+/* checkout */
+.co-total{font-size:30px;font-weight:800;text-align:center;padding:6px 0 14px;font-variant-numeric:tabular-nums}
+.cash-disp{
+  font-size:25px;font-weight:700;text-align:right;background:var(--paper);
+  border:1px solid var(--line);border-radius:9px;padding:12px 14px;font-variant-numeric:tabular-nums
+}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.quick button{padding:13px 4px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-size:15px;font-weight:600}
+.change-disp{display:flex;justify-content:space-between;font-size:18px;font-weight:700;padding:14px 4px 2px;font-variant-numeric:tabular-nums}
+.change-disp.minus{color:var(--danger)}
+
+/* receipt */
+.rcpt{font-family:"Courier New",monospace,"Hiragino Kaku Gothic ProN";background:#fff;border:1px solid var(--line);border-radius:6px;padding:18px 16px;font-size:13px;line-height:1.7}
+.rcpt .c{text-align:center}
+.rcpt .ttl{font-family:"Hiragino Mincho ProN",serif;font-size:18px;letter-spacing:.3em;margin-bottom:4px}
+.rcpt hr{border:none;border-top:1px dashed #999;margin:8px 0}
+.rcpt .li{display:flex;justify-content:space-between;gap:8px}
+.rcpt .li .n{flex:1}
+.rcpt .big{font-size:16px;font-weight:700}
+.rcpt .dim{color:#777;font-size:12px}
+
+/* AI price update */
+.ai-zone{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--sub);font-size:14px;line-height:1.8}
+.ai-prev{width:100%;border-collapse:collapse;font-size:13px}
+.ai-prev th{font-size:11px;color:var(--sub);text-align:left;padding:6px;border-bottom:1px solid var(--line);font-weight:600}
+.ai-prev td{padding:8px 6px;border-bottom:1px solid #ece8dd;vertical-align:middle}
+.ai-prev .old{color:var(--sub);text-decoration:line-through}
+.ai-prev .new{color:var(--accent);font-weight:700}
+.ai-prev select{max-width:150px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+.spin{
+  width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;animation:sp 0.8s linear infinite;margin:0 auto 10px
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:2s}}
+.notice{font-size:12px;color:var(--sub);line-height:1.7;background:var(--paper);border-radius:8px;padding:10px 12px;margin-top:10px}
+
+/* report */
+.rep-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.rep-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.rep-card .lb{font-size:12px;color:var(--sub);font-weight:600}
+.rep-card .v{font-size:22px;font-weight:800;margin-top:4px;font-variant-numeric:tabular-nums}
+.rep-card .s{font-size:12px;color:var(--sub);margin-top:2px}
+.bar-row{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:13px}
+.bar-row .lb{width:110px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-row .bar{flex:1;height:16px;background:var(--paper);border-radius:4px;overflow:hidden}
+.bar-row .bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.bar-row .v{width:90px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+
+/* toast */
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--ink);color:var(--paper);padding:12px 22px;border-radius:24px;
+  font-size:14px;opacity:0;transition:.25s;z-index:99;pointer-events:none;max-width:86vw;text-align:center
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:760px){
+  #page-reg.act{flex-direction:column}
+  .reg-right{max-width:none;min-width:0;flex:0 0 46%}
+  .reg-left{border-right:none;border-bottom:1px solid var(--line)}
+  .rep-cards{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">東美<small>レジ</small></div>
+  <div class="brand-rule"></div>
+  <div class="hd-right">
+    <span class="net-dot" id="net-dot" title="通信状態"></span>
+    <button class="hd-staff" id="hd-staff" onclick="UI.go('staff')">担当 <b id="hd-staff-name">未設定</b></button>
+    <span class="hd-clock" id="hd-clock"></span>
+  </div>
+</header>
+
+<nav id="nav">
+  <button data-p="reg" class="act">レジ</button>
+  <button data-p="prod">商品</button>
+  <button data-p="hist">履歴</button>
+  <button data-p="rep">集計</button>
+  <button data-p="staff">スタッフ</button>
+  <button data-p="set">設定</button>
+</nav>
+
+<main>
+  <!-- レジ -->
+  <div class="page act" id="page-reg">
+    <div class="reg-left">
+      <div class="cat-bar" id="cat-bar"></div>
+      <div class="prod-grid" id="prod-grid"></div>
+    </div>
+    <div class="reg-right">
+      <div class="cart-head">
+        <h2>会計カゴ</h2><span class="cnt" id="cart-cnt"></span>
+        <button class="cart-clear" onclick="Reg.clearCart()">全て削除</button>
+      </div>
+      <div class="cart-list" id="cart-list"></div>
+      <div class="cart-foot">
+        <div class="tot-row"><span>小計</span><span class="num" id="t-sub">¥0</span></div>
+        <div class="tot-row" id="t-disc-row" style="display:none"><span>値引き合計</span><span class="num" id="t-disc">-¥0</span></div>
+        <div class="tot-row main"><span>合計（税込）</span><span id="t-total">¥0</span></div>
+        <div class="tot-row"><span>内消費税 10%</span><span class="num" id="t-tax">¥0</span></div>
+        <button class="pay-btn" id="pay-btn" onclick="Reg.openCheckout()" disabled>会計する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商品 -->
+  <div class="page" id="page-prod">
+    <div class="pad">
+      <div class="sec">
+        <div class="sec-h">
+          <h3>価格変更表の写真読み取り</h3>
+          <span class="sp"></span>
+          <button class="btn blue sm" onclick="AIP.start()">写真を読み取る</button>
+        </div>
+        <div style="padding:12px 14px;font-size:13px;color:var(--sub);line-height:1.7">
+          価格変更表を撮影すると、AIが商品名と新価格を読み取り、商品マスタに反映できます。<br>
+          <b>この機能の実行時のみインターネット接続とAPIキー（設定タブ）が必要です。</b>レジ機能はオフラインのまま動きます。
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-h">
+          <h3>商品マスタ</h3><span style="font-size:12px;color:var(--sub);margin-left:8px" id="prod-count"></span>
+          <span class="sp"></span>
+          <button class="btn sm" onclick="Prod.openEdit()">＋ 商品を追加</button>
+        </div>
+        <div id="prod-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 履歴 -->
+  <div class="page" id="page-hist">
+    <div class="pad">
+      <div class="sec">
+        <div class="sec-h"><h3>売上履歴</h3><span style="font-size:12px;color:var(--sub);margin-left:8px">新しい順・タップで明細</span></div>
+        <div id="hist-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 集計 -->
+  <div class="page" id="page-rep">
+    <div class="pad">
+      <div class="rep-cards" id="rep-cards"></div>
+      <div class="sec">
+        <div class="sec-h">
+          <h3>内訳</h3>
+          <span class="sp"></span>
+          <div class="seg" style="margin:0;width:240px">
+            <button class="act" data-pd="today" onclick="Rep.setPeriod('today')">本日</button>
+            <button data-pd="month" onclick="Rep.setPeriod('month')">今月</button>
+            <button data-pd="all" onclick="Rep.setPeriod('all')">累計</button>
+          </div>
+        </div>
+        <div style="padding:8px 0 4px"><div style="font-size:12px;color:var(--sub);font-weight:600;padding:4px 14px">カテゴリ別</div><div id="rep-cat"></div></div>
+        <div style="padding:4px 0 10px;border-top:1px solid #ece8dd"><div style="font-size:12px;color:var(--sub);font-weight:600;padding:8px 14px 4px">スタッフ別</div><div id="rep-staff"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- スタッフ -->
+  <div class="page" id="page-staff">
+    <div class="pad">
+      <div class="sec">
+        <div class="sec-h">
+          <h3>スタッフ</h3><span style="font-size:12px;color:var(--sub);margin-left:8px">タップで担当者に設定</span>
+          <span class="sp"></span>
+          <button class="btn sm" onclick="Staff.add()">＋ 追加</button>
+        </div>
+        <div id="staff-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 設定 -->
+  <div class="page" id="page-set">
+    <div class="pad">
+      <div class="sec">
+        <div class="sec-h"><h3>CSV出力</h3></div>
+        <div class="row">
+          <div class="grow">商品マスタ<div class="sub">商品名・カテゴリ・価格</div></div>
+          <button class="btn ghost sm" onclick="CSV.products()">出力</button>
+        </div>
+        <div class="row">
+          <div class="grow">売上履歴<div class="sub">明細単位・返品含む（UTF-8 BOM / Excel対応）</div></div>
+          <button class="btn ghost sm" onclick="CSV.sales()">出力</button>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><h3>AI読み取り設定</h3></div>
+        <div style="padding:14px">
+          <div class="field">
+            <label>Anthropic APIキー（価格変更表の写真読み取りに使用）</label>
+            <input type="password" id="set-apikey" placeholder="sk-ant-..." autocomplete="off">
+          </div>
+          <button class="btn sm" onclick="Setting.saveKey()">保存</button>
+          <div class="notice">APIキーはこのiPadの中（ブラウザ内データベース）にのみ保存され、読み取り実行時にAnthropic社のAPIへ直接送信されます。それ以外の外部送信はありません。</div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-h"><h3>データについて</h3></div>
+        <div style="padding:14px;font-size:13px;color:var(--sub);line-height:1.8">
+          全データはこのiPadの中（IndexedDB）に保存されます。Safariの「サイトデータを消去」で全て消えるため、定期的にCSV出力でバックアップしてください。
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- 割引モーダル -->
+<div class="modal-bg" id="m-disc">
+  <div class="modal">
+    <div class="mo-h"><h3 id="disc-title">値引き・割引</h3><button class="mo-close" onclick="UI.close('m-disc')">×</button></div>
+    <div class="mo-b">
+      <div class="seg">
+        <button id="disc-seg-amt" onclick="Disc.setType('amount')">金額値引き（円）</button>
+        <button id="disc-seg-pct" onclick="Disc.setType('percent')">％割引</button>
+      </div>
+      <div class="field">
+        <label id="disc-val-label">値引き額（円）</label>
+        <input type="number" id="disc-val" inputmode="numeric" min="0" placeholder="0">
+      </div>
+      <div class="disc-quick" id="disc-quick"></div>
+      <div class="disc-preview"><span>この商品の小計</span><span id="disc-preview-v">¥0</span></div>
+    </div>
+    <div class="mo-f">
+      <button class="btn ghost" onclick="Disc.clear()">割引を解除</button>
+      <button class="btn blue" onclick="Disc.apply()">適用</button>
+    </div>
+  </div>
+</div>
+
+<!-- 会計モーダル -->
+<div class="modal-bg" id="m-co">
+  <div class="modal">
+    <div class="mo-h"><h3>現金会計</h3><button class="mo-close" onclick="UI.close('m-co')">×</button></div>
+    <div class="mo-b">
+      <div class="co-total" id="co-total">¥0</div>
+      <div class="field"><label>お預り金額</label><div class="cash-disp" id="co-cash">¥0</div></div>
+      <div class="quick">
+        <button onclick="CO.add(100)">+100</button>
+        <button onclick="CO.add(500)">+500</button>
+        <button onclick="CO.add(1000)">+1,000</button>
+        <button onclick="CO.add(5000)">+5,000</button>
+        <button onclick="CO.add(10000)">+10,000</button>
+        <button onclick="CO.exact()">ぴったり</button>
+      </div>
+      <div style="display:flex;gap:9px;margin-top:9px">
+        <button class="btn ghost" style="flex:1" onclick="CO.reset()">クリア</button>
+      </div>
+      <div class="change-disp" id="co-change-row"><span>お釣り</span><span id="co-change">¥0</span></div>
+    </div>
+    <div class="mo-f">
+      <button class="btn blue" id="co-done" style="width:100%;padding:14px" onclick="CO.done()" disabled>会計を確定する</button>
+    </div>
+  </div>
+</div>
+
+<!-- レシートモーダル -->
+<div class="modal-bg" id="m-rcpt">
+  <div class="modal">
+    <div class="mo-h"><h3>レシート</h3><button class="mo-close" onclick="UI.close('m-rcpt')">×</button></div>
+    <div class="mo-b"><div class="rcpt" id="rcpt-body"></div></div>
+    <div class="mo-f"><button class="btn" style="width:100%" onclick="UI.close('m-rcpt')">閉じる</button></div>
+  </div>
+</div>
+
+<!-- 商品編集モーダル -->
+<div class="modal-bg" id="m-prod">
+  <div class="modal">
+    <div class="mo-h"><h3 id="prod-m-title">商品を追加</h3><button class="mo-close" onclick="UI.close('m-prod')">×</button></div>
+    <div class="mo-b">
+      <div class="field"><label>商品名 *</label><input id="pf-name" placeholder="例：ホルベイン 透明水彩 12色"></div>
+      <div class="field"><label>カテゴリ *</label>
+        <input id="pf-cat" placeholder="例：絵具" list="cat-datalist"><datalist id="cat-datalist"></datalist>
+      </div>
+      <div class="field"><label>価格（税込・円） *</label><input id="pf-price" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+    </div>
+    <div class="mo-f">
+      <button class="btn red" id="pf-del" style="margin-right:auto" onclick="Prod.del()">削除</button>
+      <button class="btn ghost" onclick="UI.close('m-prod')">キャンセル</button>
+      <button class="btn blue" onclick="Prod.save()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 取引明細モーダル -->
+<div class="modal-bg" id="m-tx">
+  <div class="modal">
+    <div class="mo-h"><h3>取引明細</h3><button class="mo-close" onclick="UI.close('m-tx')">×</button></div>
+    <div class="mo-b"><div class="rcpt" id="tx-body"></div></div>
+    <div class="mo-f">
+      <button class="btn red" id="tx-refund" onclick="Hist.refund()">返品・返金する</button>
+      <button class="btn ghost" onclick="UI.close('m-tx')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI読み取りモーダル -->
+<div class="modal-bg" id="m-ai">
+  <div class="modal wide">
+    <div class="mo-h"><h3>価格変更表の読み取り</h3><button class="mo-close" onclick="AIP.cancel()">×</button></div>
+    <div class="mo-b" id="ai-body"></div>
+    <div class="mo-f" id="ai-foot"></div>
+  </div>
+</div>
+
+<input type="file" id="ai-file" accept="image/*" style="display:none">
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
