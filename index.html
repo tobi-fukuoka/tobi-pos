@@ -188,8 +188,11 @@ main{flex:1;overflow:hidden;position:relative}
   font-size:25px;font-weight:700;text-align:right;background:var(--paper);
   border:1px solid var(--line);border-radius:9px;padding:12px 14px;font-variant-numeric:tabular-nums
 }
-.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
-.quick button{padding:13px 4px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-size:15px;font-weight:600}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:10px}
+.quick button{padding:11px 4px;border:1px solid var(--line);border-radius:9px;background:var(--paper);font-size:14px;font-weight:600}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.keypad button{padding:14px 4px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-size:21px;font-weight:600;font-variant-numeric:tabular-nums}
+.keypad button:active{background:var(--accent-soft);border-color:var(--accent)}
 .change-disp{display:flex;justify-content:space-between;font-size:18px;font-weight:700;padding:14px 4px 2px;font-variant-numeric:tabular-nums}
 .change-disp.minus{color:var(--danger)}
 
@@ -424,17 +427,27 @@ main{flex:1;overflow:hidden;position:relative}
     <div class="mo-h"><h3>現金会計</h3><button class="mo-close" onclick="UI.close('m-co')">×</button></div>
     <div class="mo-b">
       <div class="co-total" id="co-total">¥0</div>
-      <div class="field"><label>お預り金額</label><div class="cash-disp" id="co-cash">¥0</div></div>
+      <div class="field"><label>お預り金額（テンキーで入力）</label><div class="cash-disp" id="co-cash">¥0</div></div>
+      <div class="keypad">
+        <button onclick="CO.digit(7)">7</button>
+        <button onclick="CO.digit(8)">8</button>
+        <button onclick="CO.digit(9)">9</button>
+        <button onclick="CO.digit(4)">4</button>
+        <button onclick="CO.digit(5)">5</button>
+        <button onclick="CO.digit(6)">6</button>
+        <button onclick="CO.digit(1)">1</button>
+        <button onclick="CO.digit(2)">2</button>
+        <button onclick="CO.digit(3)">3</button>
+        <button onclick="CO.digit(0);CO.digit(0)">00</button>
+        <button onclick="CO.digit(0)">0</button>
+        <button onclick="CO.back()" style="font-size:17px">⌫</button>
+      </div>
       <div class="quick">
-        <button onclick="CO.add(100)">+100</button>
-        <button onclick="CO.add(500)">+500</button>
         <button onclick="CO.add(1000)">+1,000</button>
         <button onclick="CO.add(5000)">+5,000</button>
         <button onclick="CO.add(10000)">+10,000</button>
         <button onclick="CO.exact()">ぴったり</button>
-      </div>
-      <div style="display:flex;gap:9px;margin-top:9px">
-        <button class="btn ghost" style="flex:1" onclick="CO.reset()">クリア</button>
+        <button onclick="CO.reset()" style="grid-column:1/-1;color:var(--danger)">クリア（入れ直す）</button>
       </div>
       <div class="change-disp" id="co-change-row"><span>お釣り</span><span id="co-change">¥0</span></div>
     </div>

@@ -222,6 +222,8 @@ $('disc-val').addEventListener('input', () => Disc.preview());
 const CO = {
   cash: 0,
   open() { CO.cash = 0; CO.render(); UI.open('m-co'); },
+  digit(d) { CO.cash = Math.min(9999999, CO.cash * 10 + d); CO.render(); },
+  back() { CO.cash = Math.floor(CO.cash / 10); CO.render(); },
   add(v) { CO.cash += v; CO.render(); },
   exact() { CO.cash = cartCalc().total; CO.render(); },
   reset() { CO.cash = 0; CO.render(); },
