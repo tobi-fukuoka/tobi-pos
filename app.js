@@ -63,13 +63,19 @@ const S = {
   apiKey: ''
 };
 
-/* ---------------- 計算 ---------------- */
+/* ---------------- 計算 ----------------
+   taxMode: 'in'=税込で登録 / 'ex'=税抜で登録（会計時に10%上乗せ）
+   未設定（旧データ）は 'in' として扱う                           */
+function unitIncl(price, taxMode) {
+  return taxMode === 'ex' ? Math.floor(price * (100 + TAX_RATE) / 100) : Math.round(price);
+}
 function lineCalc(l) {
-  const base = l.price * l.qty;
+  const unit = unitIncl(l.price, l.taxMode);   // 1個あたりの税込価格
+  const base = unit * l.qty;
   let total = base;
   if (l.discType === 'amount')  total = Math.max(0, base - (l.discValue || 0));
   if (l.discType === 'percent') total = Math.floor(base * (100 - Math.min(100, l.discValue || 0)) / 100);
-  return { base, total, disc: base - total };
+  return { base, total, disc: base - total, unit };
 }
 function cartCalc() {
   let sub = 0, disc = 0, total = 0;
@@ -121,16 +127,16 @@ const Reg = {
     $('prod-grid').innerHTML = list.length ? list.map(p => `
       <button class="prod-card" onclick="Reg.add(${p.id})">
         <span class="nm">${esc(p.name)}</span>
-        <span class="ct">${esc(p.category)}</span>
-        <span class="pr">${yen(p.price)}</span>
+        <span class="ct">${esc(p.category)}${p.taxMode === 'ex' ? ' ・税抜登録' : ''}</span>
+        <span class="pr">${yen(unitIncl(p.price, p.taxMode))}</span>
       </button>`).join('')
-      : `<div class="grid-empty">商品がまだありません。<br>「商品」タブから登録してください。</div>`;
+      : `<div class="grid-empty">商品がまだありません。<br>「商品」タブから登録するか、<br>下の「手打ち」で直接入力できます。</div>`;
   },
   add(pid) {
     const p = S.products.find(x => x.id === pid); if (!p) return;
     const line = S.cart.find(l => l.pid === pid && !l.discType);
     if (line) line.qty++;
-    else S.cart.push({ pid, name: p.name, category: p.category, price: p.price, qty: 1, discType: null, discValue: 0 });
+    else S.cart.push({ pid, name: p.name, category: p.category, price: p.price, taxMode: p.taxMode || 'in', qty: 1, discType: null, discValue: 0 });
     Reg.renderCart();
   },
   qty(i, d) {
@@ -202,7 +208,8 @@ const Disc = {
     const l = S.cart[Disc.idx]; if (!l) return;
     const v = Number($('disc-val').value) || 0;
     const c = lineCalc({ ...l, discType: v > 0 ? Disc.type : null, discValue: v });
-    $('disc-preview-v').textContent = `${yen(l.price * l.qty)} → ${yen(c.total)}`;
+    const base = unitIncl(l.price, l.taxMode) * l.qty;
+    $('disc-preview-v').textContent = `${yen(base)} → ${yen(c.total)}`;
   },
   apply() {
     const l = S.cart[Disc.idx]; if (!l) return;
@@ -217,6 +224,44 @@ const Disc = {
   }
 };
 $('disc-val').addEventListener('input', () => Disc.preview());
+
+/* ---------------- 手打ち（未登録商品） ---------------- */
+const Manual = {
+  taxMode: 'in',
+  open() {
+    Manual.taxMode = 'in';
+    $('mn-name').value = '';
+    $('mn-cat').value = '';
+    $('mn-price').value = '';
+    // 既存カテゴリを候補に
+    const dl = [...new Set(S.products.map(p => p.category))];
+    $('mn-cat-list').innerHTML = dl.map(c => `<option value="${esc(c)}">`).join('');
+    Manual.renderTax(); Manual.preview();
+    UI.open('m-manual');
+  },
+  setTax(t) { Manual.taxMode = t; Manual.renderTax(); Manual.preview(); },
+  renderTax() {
+    $('mn-tax-in').classList.toggle('act', Manual.taxMode === 'in');
+    $('mn-tax-ex').classList.toggle('act', Manual.taxMode === 'ex');
+  },
+  preview() {
+    const v = Number($('mn-price').value) || 0;
+    $('mn-preview').textContent = Manual.taxMode === 'ex'
+      ? `税込 ${yen(unitIncl(v, 'ex'))} で会計されます`
+      : `税込 ${yen(v)}（そのまま会計されます）`;
+  },
+  add() {
+    const name = $('mn-name').value.trim() || '手打ち商品';
+    const cat = $('mn-cat').value.trim();
+    const price = Number($('mn-price').value);
+    if (!cat) { UI.toast('カテゴリを入力してください'); return; }
+    if (!(price > 0)) { UI.toast('金額を入力してください'); return; }
+    S.cart.push({ pid: null, name, category: cat, price, taxMode: Manual.taxMode, qty: 1, discType: null, discValue: 0 });
+    UI.close('m-manual'); Reg.renderCart();
+    UI.toast('カゴに追加しました');
+  }
+};
+$('mn-price') && $('mn-price').addEventListener('input', () => Manual.preview());
 
 /* ---------------- 会計 ---------------- */
 const CO = {
@@ -259,8 +304,9 @@ function receiptHTML(s, forDetail) {
   const d = new Date(s.ts);
   const dt = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   const lines = s.items.map(it => {
+    const lineBase = unitIncl(it.price, it.taxMode) * it.qty;
     const disc = it.lineDisc ? `<div class="li dim"><span class="n">　${it.discType === 'percent' ? it.discValue + '%引き' : '値引き'}</span><span>−${yen(it.lineDisc).slice(1)}</span></div>` : '';
-    return `<div class="li"><span class="n">${esc(it.name)} ×${it.qty}</span><span>${yen(it.price * it.qty)}</span></div>${disc}`;
+    return `<div class="li"><span class="n">${esc(it.name)} ×${it.qty}</span><span>${yen(lineBase)}</span></div>${disc}`;
   }).join('');
   return `
     <div class="c ttl">東 美</div>
@@ -287,13 +333,18 @@ const Prod = {
     $('prod-count').textContent = `${S.products.length}件`;
     const dl = [...new Set(S.products.map(p => p.category))];
     $('cat-datalist').innerHTML = dl.map(c => `<option value="${esc(c)}">`).join('');
-    $('prod-list').innerHTML = S.products.length ? S.products.map(p => `
-      <div class="row" onclick="Prod.openEdit(${p.id})" style="cursor:pointer">
+    $('prod-list').innerHTML = S.products.length ? S.products.map(p => {
+      const priceLabel = p.taxMode === 'ex'
+        ? `${yen(p.price)} <span style="color:var(--sub);font-weight:400">税抜 → ${yen(unitIncl(p.price,'ex'))}</span>`
+        : `${yen(p.price)} <span style="color:var(--sub);font-weight:400">税込</span>`;
+      return `<div class="row" onclick="Prod.openEdit(${p.id})" style="cursor:pointer">
         <div class="grow">${esc(p.name)}<div class="sub"><span class="badge cat">${esc(p.category)}</span></div></div>
-        <div class="num" style="font-weight:700">${yen(p.price)}</div>
-      </div>`).join('')
+        <div class="num" style="font-weight:700;text-align:right">${priceLabel}</div>
+      </div>`;
+    }).join('')
       : `<div class="row" style="color:var(--sub)">商品がありません。「＋ 商品を追加」から登録してください。</div>`;
   },
+  taxMode: 'in',
   openEdit(id) {
     Prod.editId = id ?? null;
     const p = id ? S.products.find(x => x.id === id) : null;
@@ -301,17 +352,26 @@ const Prod = {
     $('pf-name').value = p ? p.name : '';
     $('pf-cat').value = p ? p.category : '';
     $('pf-price').value = p ? p.price : '';
+    Prod.taxMode = p ? (p.taxMode || 'in') : 'in';
+    Prod.renderTax();
     $('pf-del').style.display = p ? '' : 'none';
     UI.open('m-prod');
+  },
+  setTax(t) { Prod.taxMode = t; Prod.renderTax(); },
+  renderTax() {
+    $('pf-tax-in').classList.toggle('act', Prod.taxMode === 'in');
+    $('pf-tax-ex').classList.toggle('act', Prod.taxMode === 'ex');
+    $('pf-price-label').textContent = Prod.taxMode === 'ex' ? '価格（税抜・円） *' : '価格（税込・円） *';
   },
   async save() {
     const name = $('pf-name').value.trim(), cat = $('pf-cat').value.trim();
     const price = Number($('pf-price').value);
     if (!name || !cat || !(price >= 0)) { UI.toast('商品名・カテゴリ・価格を入力してください'); return; }
+    const taxMode = Prod.taxMode;
     const p = Prod.editId ? S.products.find(x => x.id === Prod.editId) : { };
-    Object.assign(p, { name, category: cat, price });
-    p.id = await DB.put('products', Prod.editId ? p : { name, category: cat, price });
-    if (!Prod.editId) S.products.push({ id: p.id, name, category: cat, price });
+    Object.assign(p, { name, category: cat, price, taxMode });
+    p.id = await DB.put('products', Prod.editId ? p : { name, category: cat, price, taxMode });
+    if (!Prod.editId) S.products.push({ id: p.id, name, category: cat, price, taxMode });
     UI.close('m-prod'); Prod.render(); Reg.renderCats(); Reg.renderGrid();
     UI.toast('保存しました');
   },
@@ -467,24 +527,151 @@ const CSV = {
   },
   products() {
     CSV.dl(`商品マスタ_${CSV.stamp()}.csv`,
-      [['商品ID','商品名','カテゴリ','価格(税込)'], ...S.products.map(p => [p.id, p.name, p.category, p.price])]);
+      [['商品名','カテゴリ','価格','税区分'],
+       ...S.products.map(p => [p.name, p.category, p.price, p.taxMode === 'ex' ? '税抜' : '税込'])]);
     UI.toast('商品マスタCSVを出力しました');
   },
+  template() {
+    CSV.dl('商品一括登録_テンプレート.csv', [
+      ['商品名','カテゴリ','価格','税区分'],
+      ['ホルベイン 透明水彩 12色','絵具','2200','税込'],
+      ['アルシュ 水彩紙 300g','紙','1800','税抜']
+    ]);
+    UI.toast('テンプレートを出力しました');
+  },
   sales() {
-    const rows = [['取引No','日時','担当','状態','商品名','カテゴリ','単価','数量','割引','明細金額','取引合計','お預り','お釣り']];
+    const rows = [['取引No','日時','担当','状態','商品名','カテゴリ','単価','税区分','数量','割引','明細金額','取引合計','お預り','お釣り']];
     for (const s of [...S.sales].sort((a, b) => a.ts - b.ts)) {
       const d = new Date(s.ts);
       const dt = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
       for (const it of s.items) {
         const disc = it.discType ? (it.discType === 'percent' ? `${it.discValue}%引き` : `${it.discValue}円引き`) : '';
         rows.push([String(s.txNo).padStart(6,'0'), dt, s.staffName, s.refunded ? '返品済' : '通常',
-          it.name, it.category, it.price, it.qty, disc, it.lineTotal, s.total, s.cash, s.change]);
+          it.name, it.category, it.price, it.taxMode === 'ex' ? '税抜' : '税込', it.qty, disc, it.lineTotal, s.total, s.cash, s.change]);
       }
     }
     CSV.dl(`売上履歴_${CSV.stamp()}.csv`, rows);
     UI.toast('売上履歴CSVを出力しました');
   }
 };
+
+/* ---------------- CSV一括取込（商品） ---------------- */
+const CSVImp = {
+  items: [],
+  // CSV文字列 → 2次元配列（引用符・カンマ・改行に対応）
+  parse(text) {
+    text = String(text).replace(/^\uFEFF/, '');
+    const rows = []; let row = [], cur = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+        else cur += c;
+      } else {
+        if (c === '"') q = true;
+        else if (c === ',') { row.push(cur); cur = ''; }
+        else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+        else if (c === '\r') { /* skip */ }
+        else cur += c;
+      }
+    }
+    if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+    return rows.filter(r => r.some(c => String(c).trim() !== ''));
+  },
+  toPrice(s) {
+    const n = Math.round(Number(String(s).normalize('NFKC').replace(/[¥￥,，\s円]/g, '')));
+    return Number.isFinite(n) ? n : NaN;
+  },
+  toTax(s) {
+    const t = String(s || '').normalize('NFKC').trim();
+    return /税抜|税別|外税|ex/i.test(t) ? 'ex' : 'in';
+  },
+  key(name) { return String(name).normalize('NFKC').trim(); },
+  build(text) {
+    const rows = CSVImp.parse(text);
+    if (!rows.length) return [];
+    const isPrice = h => /価格|金額|単価/.test(h);
+    const isCat   = h => /カテゴリ|分類/.test(h);
+    const isTax   = h => /税/.test(h) && !isPrice(h);
+    const isName  = h => /商品名|品名|名称|名前|名/.test(h);
+    const head = rows[0].map(h => h.trim());
+    const hasHeader = head.some(h => isName(h) || isCat(h) || isPrice(h) || isTax(h));
+    let idx = { name: 0, cat: 1, price: 2, tax: 3 };
+    let data = rows;
+    if (hasHeader) {
+      idx = {
+        name: head.findIndex(isName),
+        cat:  head.findIndex(isCat),
+        price: head.findIndex(isPrice),
+        tax:  head.findIndex(isTax)
+      };
+      if (idx.name < 0) idx.name = 0;
+      if (idx.cat < 0) idx.cat = 1;
+      if (idx.price < 0) idx.price = 2;
+      data = rows.slice(1);
+    }
+    const out = [];
+    for (const r of data) {
+      const name = (r[idx.name] || '').trim();
+      const cat = (r[idx.cat] || '').trim();
+      const price = CSVImp.toPrice(r[idx.price]);
+      const tax = idx.tax >= 0 ? CSVImp.toTax(r[idx.tax]) : 'in';
+      if (!name || !cat || !Number.isFinite(price)) continue;
+      const exist = S.products.find(p => CSVImp.key(p.name) === CSVImp.key(name));
+      out.push({ name, cat, price, tax, mode: exist ? 'update' : 'new', existId: exist ? exist.id : null });
+    }
+    return out;
+  },
+  pick() {
+    if (!S.products) return;
+    $('csv-file').value = '';
+    $('csv-file').click();
+  },
+  async loaded(file) {
+    if (!file) return;
+    const text = await file.text();
+    CSVImp.items = CSVImp.build(text);
+    if (!CSVImp.items.length) {
+      UI.toast('読み取れる行がありませんでした（列の順番をご確認ください）');
+      return;
+    }
+    const nNew = CSVImp.items.filter(i => i.mode === 'new').length;
+    const nUpd = CSVImp.items.filter(i => i.mode === 'update').length;
+    $('csv-body').innerHTML = `
+      <div style="font-size:13px;color:var(--sub);margin-bottom:10px">
+        ${CSVImp.items.length}件を読み取りました（新規 ${nNew}件・更新 ${nUpd}件）。内容を確認して「取り込む」を押してください。
+      </div>
+      <table class="ai-prev"><tr><th>状態</th><th>商品名</th><th>カテゴリ</th><th>価格</th><th>税区分</th></tr>
+      ${CSVImp.items.map(i => `<tr>
+        <td><span class="badge ${i.mode === 'new' ? 'cat' : 'ref'}">${i.mode === 'new' ? '新規' : '更新'}</span></td>
+        <td>${esc(i.name)}</td><td>${esc(i.cat)}</td>
+        <td class="num">${yen(i.price)}</td>
+        <td>${i.tax === 'ex' ? '税抜' : '税込'}</td>
+      </tr>`).join('')}</table>
+      <div class="notice">「更新」は商品名が一致する既存商品の価格・カテゴリ・税区分を上書きします。文字が少しでも違う場合は別商品（新規）として追加されます。</div>`;
+    $('csv-foot').innerHTML = `
+      <button class="btn ghost" onclick="UI.close('m-csv')">キャンセル</button>
+      <button class="btn blue" onclick="CSVImp.apply()">取り込む</button>`;
+    UI.open('m-csv');
+  },
+  async apply() {
+    let nNew = 0, nUpd = 0;
+    for (const it of CSVImp.items) {
+      if (it.mode === 'update' && it.existId != null) {
+        const p = S.products.find(x => x.id === it.existId);
+        if (p) { p.name = it.name; p.category = it.cat; p.price = it.price; p.taxMode = it.tax; await DB.put('products', p); nUpd++; }
+      } else {
+        const rec = { name: it.name, category: it.cat, price: it.price, taxMode: it.tax };
+        rec.id = await DB.put('products', rec);
+        S.products.push(rec); nNew++;
+      }
+    }
+    UI.close('m-csv');
+    Prod.render(); Reg.renderCats(); Reg.renderGrid();
+    UI.toast(`取込完了：新規 ${nNew}件・更新 ${nUpd}件`);
+  }
+};
+$('csv-file') && $('csv-file').addEventListener('change', e => CSVImp.loaded(e.target.files[0]));
 
 /* ---------------- AI価格読み取り ---------------- */
 const AIP = {
@@ -648,10 +835,11 @@ const SAMPLE = [
 async function init() {
   await DB.open();
   S.products = await DB.all('products');
+  S.products.forEach(p => { if (!p.taxMode) p.taxMode = 'in'; });   // 旧データは税込扱い
   if (!S.products.length && !(await DB.getMeta('seeded', false))) {
     for (const [name, category, price] of SAMPLE) {
-      const id = await DB.put('products', { name, category, price });
-      S.products.push({ id, name, category, price });
+      const id = await DB.put('products', { name, category, price, taxMode: 'in' });
+      S.products.push({ id, name, category, price, taxMode: 'in' });
     }
     await DB.setMeta('seeded', true);
   }

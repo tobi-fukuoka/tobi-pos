@@ -1,7 +1,7 @@
 // Service Worker for 東美レジ v2
 // Cache-first（オフライン動作）。Anthropic APIへの通信のみ常にネットワーク直行。
 
-const CACHE_NAME = 'tobi-pos-v2-2';
+const CACHE_NAME = 'tobi-pos-v2-3';
 const ASSETS = [
   './',
   './index.html',

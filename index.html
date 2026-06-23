@@ -94,6 +94,8 @@ main{flex:1;overflow:hidden;position:relative}
 .cart-head h2{font-size:15px;font-weight:700}
 .cart-head .cnt{margin-left:8px;font-size:12px;color:var(--sub)}
 .cart-clear{margin-left:auto;font-size:13px;color:var(--danger);padding:6px 10px}
+.manual-btn{margin-left:auto;font-size:13px;color:var(--accent);background:var(--accent-soft);border-radius:14px;padding:6px 12px;font-weight:600}
+.manual-btn+.cart-clear{margin-left:8px}
 .cart-list{flex:1;overflow-y:auto}
 .cart-line{padding:10px 14px;border-bottom:1px solid #ece8dd}
 .cl-top{display:flex;align-items:baseline;gap:8px}
@@ -281,7 +283,8 @@ main{flex:1;overflow:hidden;position:relative}
     <div class="reg-right">
       <div class="cart-head">
         <h2>会計カゴ</h2><span class="cnt" id="cart-cnt"></span>
-        <button class="cart-clear" onclick="Reg.clearCart()">全て削除</button>
+        <button class="manual-btn" onclick="Manual.open()">＋ 手打ち</button>
+        <button class="cart-clear" onclick="Reg.clearCart()">全削除</button>
       </div>
       <div class="cart-list" id="cart-list"></div>
       <div class="cart-foot">
@@ -306,6 +309,19 @@ main{flex:1;overflow:hidden;position:relative}
         <div style="padding:12px 14px;font-size:13px;color:var(--sub);line-height:1.7">
           価格変更表を撮影すると、AIが商品名と新価格を読み取り、商品マスタに反映できます。<br>
           <b>この機能の実行時のみインターネット接続とAPIキー（設定タブ）が必要です。</b>レジ機能はオフラインのまま動きます。
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-h">
+          <h3>CSVで一括登録</h3>
+          <span class="sp"></span>
+          <button class="btn ghost sm" onclick="CSV.template()">テンプレート</button>
+          <button class="btn blue sm" onclick="CSVImp.pick()" style="margin-left:8px">CSVを読み込む</button>
+        </div>
+        <div style="padding:12px 14px;font-size:13px;color:var(--sub);line-height:1.7">
+          Excel等で作ったCSV（列：<b>商品名・カテゴリ・価格・税区分</b>）を読み込んで一括登録できます。<br>
+          税区分は「税込」または「税抜」（空欄は税込扱い）。商品名が一致する既存商品は<b>上書き更新</b>されます。<br>
+          まずは「テンプレート」で書式の見本を出力できます。
         </div>
       </div>
       <div class="sec">
@@ -475,7 +491,13 @@ main{flex:1;overflow:hidden;position:relative}
       <div class="field"><label>カテゴリ *</label>
         <input id="pf-cat" placeholder="例：絵具" list="cat-datalist"><datalist id="cat-datalist"></datalist>
       </div>
-      <div class="field"><label>価格（税込・円） *</label><input id="pf-price" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+      <div class="field"><label>税区分 *</label>
+        <div class="seg" style="margin:0">
+          <button id="pf-tax-in" onclick="Prod.setTax('in')">税込価格で登録</button>
+          <button id="pf-tax-ex" onclick="Prod.setTax('ex')">税抜価格で登録</button>
+        </div>
+      </div>
+      <div class="field"><label id="pf-price-label">価格（税込・円） *</label><input id="pf-price" type="number" inputmode="numeric" min="0" placeholder="0"></div>
     </div>
     <div class="mo-f">
       <button class="btn red" id="pf-del" style="margin-right:auto" onclick="Prod.del()">削除</button>
@@ -506,7 +528,42 @@ main{flex:1;overflow:hidden;position:relative}
   </div>
 </div>
 
+<!-- 手打ち（未登録商品）モーダル -->
+<div class="modal-bg" id="m-manual">
+  <div class="modal">
+    <div class="mo-h"><h3>手打ちで追加（未登録商品）</h3><button class="mo-close" onclick="UI.close('m-manual')">×</button></div>
+    <div class="mo-b">
+      <div class="field"><label>商品名（任意・空欄なら「手打ち商品」）</label><input id="mn-name" placeholder="例：額装サービス"></div>
+      <div class="field"><label>カテゴリ *</label>
+        <input id="mn-cat" placeholder="例：その他" list="mn-cat-list"><datalist id="mn-cat-list"></datalist>
+      </div>
+      <div class="field"><label>税区分 *</label>
+        <div class="seg" style="margin:0">
+          <button id="mn-tax-in" onclick="Manual.setTax('in')">税込価格</button>
+          <button id="mn-tax-ex" onclick="Manual.setTax('ex')">税抜価格</button>
+        </div>
+      </div>
+      <div class="field"><label>金額（円） *</label><input id="mn-price" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+      <div class="disc-preview"><span id="mn-preview">税込 ¥0</span></div>
+    </div>
+    <div class="mo-f">
+      <button class="btn ghost" onclick="UI.close('m-manual')">キャンセル</button>
+      <button class="btn blue" onclick="Manual.add()">カゴに追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV一括取込モーダル -->
+<div class="modal-bg" id="m-csv">
+  <div class="modal wide">
+    <div class="mo-h"><h3>CSV一括登録の確認</h3><button class="mo-close" onclick="UI.close('m-csv')">×</button></div>
+    <div class="mo-b" id="csv-body"></div>
+    <div class="mo-f" id="csv-foot"></div>
+  </div>
+</div>
+
 <input type="file" id="ai-file" accept="image/*" style="display:none">
+<input type="file" id="csv-file" accept=".csv,text/csv" style="display:none">
 <div id="toast"></div>
 
 <script src="app.js"></script>
